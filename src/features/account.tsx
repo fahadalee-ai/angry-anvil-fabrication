@@ -3,13 +3,9 @@ import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import logo from "@/img/logo.png";
 import { CHAT_TOPICS, COURSES, DEVOTIONALS, GALLERY, GIVEAWAYS, PHOTOS, SERVICES, SHOP, getCatalog } from "@/lib/sample-data";
-import { SAMPLE_OTP } from "@/lib/services";
 import { isUnread, useApp, visibleNotifications } from "@/lib/store";
 import { asset } from "@/lib/utils";
 import { Badge, Button, Chip, Dialog, EmptyState, Field, Header, Photo, Screen, TextArea } from "@/components/ui-kit";
-
-const emailOk = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
-const passwordOk = (v: string) => v.length >= 8 && /\d/.test(v);
 
 export function OnboardingScreen() {
   const app = useApp();
@@ -72,14 +68,13 @@ export function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   return (
-    <AuthFrame title="Sign in" subtitle="Sample account: builder@angryanvil.store / ShopDemo1">
-      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); setBusy(true); const result = app.login(email, password); setBusy(false); if (!result.ok) setError(result.reason); else nav({ to: "/" as never }); }}>
-        <Field label="Email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+    <AuthFrame title="Sign in" subtitle="Any email and password will sign you in.">
+      <form noValidate className="space-y-3" onSubmit={(e) => { e.preventDefault(); setBusy(true); app.login(email, password); setBusy(false); nav({ to: "/" as never }); }}>
+        <Field label="Email" type="text" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <div className="relative">
-          <Field label="Password" type={show ? "text" : "password"} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} error={error} />
+          <Field label="Password" type={show ? "text" : "password"} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           <button type="button" aria-label={show ? "Hide password" : "Show password"} className="absolute right-3 top-9" onClick={() => setShow((s) => !s)}>{show ? <EyeOff size={18} /> : <Eye size={18} />}</button>
         </div>
         <Link to={"/forgot-password" as never} className="text-[13px] text-[var(--secondary-ink)]">Forgot password</Link>
@@ -100,35 +95,19 @@ export function RegisterScreen() {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", password: "" });
   const [show, setShow] = useState(false);
   const [terms, setTerms] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   return (
     <AuthFrame title="Create account" subtitle="Guests can browse the shop and course list. Checkout, courses, chat, giveaways, Bible requests, and bookings need an account.">
-      <form className="space-y-3" onSubmit={(e) => {
-        e.preventDefault();
-        const next: Record<string, string> = {};
-        if (form.firstName.trim().length < 1) next.firstName = "Enter your first name.";
-        if (form.lastName.trim().length < 1) next.lastName = "Enter your last name.";
-        if (!emailOk(form.email)) next.email = "Enter a valid email.";
-        if (form.phone.trim().length < 7) next.phone = "Enter a phone number.";
-        if (!passwordOk(form.password)) next.password = "Use 8 or more characters, including a number.";
-        if (!terms) next.terms = "Accept the terms to create an account.";
-        setErrors(next);
-        if (Object.keys(next).length) return;
-        const result = app.register(form);
-        if (!result.ok) setErrors({ email: result.reason });
-        else nav({ to: "/verify-email" as never });
-      }}>
-        <Field label="First name" value={form.firstName} onChange={(e) => set("firstName", e.target.value)} error={errors.firstName} />
-        <Field label="Last name" value={form.lastName} onChange={(e) => set("lastName", e.target.value)} error={errors.lastName} />
-        <Field label="Email" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} error={errors.email} />
-        <Field label="Phone" type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} error={errors.phone} />
+      <form noValidate className="space-y-3" onSubmit={(e) => { e.preventDefault(); app.register(form); nav({ to: "/verify-email" as never }); }}>
+        <Field label="First name" value={form.firstName} onChange={(e) => set("firstName", e.target.value)} />
+        <Field label="Last name" value={form.lastName} onChange={(e) => set("lastName", e.target.value)} />
+        <Field label="Email" type="text" value={form.email} onChange={(e) => set("email", e.target.value)} />
+        <Field label="Phone" type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
         <div className="relative">
-          <Field label="Password" type={show ? "text" : "password"} value={form.password} onChange={(e) => set("password", e.target.value)} error={errors.password} hint="8+ characters with a number." />
+          <Field label="Password" type={show ? "text" : "password"} value={form.password} onChange={(e) => set("password", e.target.value)} />
           <button type="button" aria-label="Toggle password" className="absolute right-3 top-9" onClick={() => setShow((s) => !s)}>{show ? <EyeOff size={18} /> : <Eye size={18} />}</button>
         </div>
         <label className="flex gap-2 text-[13px]"><input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} /> I agree to the <Link to={"/terms" as never} className="text-[var(--secondary-ink)]">Terms</Link> and <Link to={"/privacy" as never} className="text-[var(--secondary-ink)]">Privacy Policy</Link>.</label>
-        {errors.terms && <p className="text-[13px] text-destructive">{errors.terms}</p>}
         <Button type="submit" full>Create account</Button>
         <p className="text-[14px]">Already have an account? <Link to={"/login" as never} className="text-[var(--secondary-ink)]">Sign in</Link></p>
       </form>
@@ -140,11 +119,10 @@ export function ForgotScreen() {
   const app = useApp();
   const nav = useNavigate();
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
   return (
     <AuthFrame title="Forgot password" subtitle="We'll mark a sample code for this device. No email is sent.">
-      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (!emailOk(email)) { setError("Enter a valid email."); return; } const result = app.requestOtp(email, "reset"); if (!result.ok) setError(result.reason); else nav({ to: "/otp" as never }); }}>
-        <Field label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={error} />
+      <form noValidate className="space-y-3" onSubmit={(e) => { e.preventDefault(); app.requestOtp(email, "reset"); nav({ to: "/otp" as never }); }}>
+        <Field label="Email" type="text" value={email} onChange={(e) => setEmail(e.target.value)} />
         <Button type="submit" full>Send code</Button>
       </form>
     </AuthFrame>
@@ -155,11 +133,10 @@ export function OtpScreen() {
   const app = useApp();
   const nav = useNavigate();
   const [code, setCode] = useState("");
-  const [error, setError] = useState("");
   return (
-    <AuthFrame title="Enter the code" subtitle={`SAMPLE code: ${SAMPLE_OTP}`}>
-      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); const result = app.verifyOtp(code); if (!result.ok) setError(result.reason); else nav({ to: (result.purpose === "reset" ? "/reset-password" : "/") as never }); }}>
-        <Field label="6-digit code" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} error={error} />
+    <AuthFrame title="Enter the code" subtitle="Any code is accepted.">
+      <form noValidate className="space-y-3" onSubmit={(e) => { e.preventDefault(); const result = app.verifyOtp(code); nav({ to: (result.purpose === "reset" ? "/reset-password" : "/") as never }); }}>
+        <Field label="6-digit code" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} />
         <Button type="submit" full>Verify</Button>
       </form>
     </AuthFrame>
@@ -170,11 +147,10 @@ export function VerifyEmailScreen() {
   const app = useApp();
   const nav = useNavigate();
   const [code, setCode] = useState("");
-  const [error, setError] = useState("");
   return (
-    <AuthFrame title="Verify email" subtitle={`SAMPLE code: ${SAMPLE_OTP}. Nothing was emailed.`}>
-      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (!app.pendingOtp) app.requestOtp(app.user?.email ?? "", "verify"); const result = app.verifyOtp(code); if (!result.ok) setError(result.reason); else nav({ to: "/" as never }); }}>
-        <Field label="Code" value={code} onChange={(e) => setCode(e.target.value)} error={error} />
+    <AuthFrame title="Verify email" subtitle="Any code is accepted. Nothing is emailed.">
+      <form noValidate className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (!app.pendingOtp) app.requestOtp(app.user?.email ?? "", "verify"); app.verifyOtp(code); nav({ to: "/" as never }); }}>
+        <Field label="Code" value={code} onChange={(e) => setCode(e.target.value)} />
         <Button type="submit" full>Verify and continue</Button>
       </form>
     </AuthFrame>
@@ -185,13 +161,12 @@ export function ResetScreen() {
   const app = useApp();
   const nav = useNavigate();
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   if (done) return <AuthFrame title="Password updated"><Button full onClick={() => nav({ to: "/login" as never })}>Back to sign in</Button></AuthFrame>;
   return (
     <AuthFrame title="New password">
-      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (!passwordOk(password)) { setError("Use 8 or more characters, including a number."); return; } const result = app.resetPassword(password); if (!result.ok) setError(result.reason); else setDone(true); }}>
-        <Field label="New password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} error={error} />
+      <form noValidate className="space-y-3" onSubmit={(e) => { e.preventDefault(); app.resetPassword(password); setDone(true); }}>
+        <Field label="New password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         <Button type="submit" full>Save password</Button>
       </form>
     </AuthFrame>
@@ -202,13 +177,12 @@ export function UpdatePasswordScreen() {
   const app = useApp();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
-  const [error, setError] = useState("");
   return (
     <Screen>
       <Header title="Change password" />
-      <form className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); if (!passwordOk(next)) { setError("Use 8 or more characters, including a number."); return; } const result = app.changePassword(current, next); if (!result.ok) setError(result.reason); else setError(""); }}>
+      <form noValidate className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); app.changePassword(current, next); }}>
         <Field label="Current password" type="password" value={current} onChange={(e) => setCurrent(e.target.value)} />
-        <Field label="New password" type="password" value={next} onChange={(e) => setNext(e.target.value)} error={error} />
+        <Field label="New password" type="password" value={next} onChange={(e) => setNext(e.target.value)} />
         <Button type="submit" full>Update password</Button>
       </form>
     </Screen>
@@ -288,7 +262,7 @@ export function EditProfile() {
   return (
     <Screen>
       <Header title="Edit profile" />
-      <form className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); app.updateProfile({ firstName, lastName, phone }); }}>
+      <form noValidate className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); app.updateProfile({ firstName, lastName, phone }); }}>
         <Field label="First name" value={firstName} onChange={(e) => setFirst(e.target.value)} />
         <Field label="Last name" value={lastName} onChange={(e) => setLast(e.target.value)} />
         <Field label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
@@ -296,7 +270,7 @@ export function EditProfile() {
         <label className="block text-[13px]">Profile photo
           <input type="file" accept="image/*" className="mt-1 block w-full text-[13px]" onChange={(e) => {
             const file = e.target.files?.[0];
-            if (!file || file.size > 900000) return;
+            if (!file) return;
             const reader = new FileReader();
             reader.onload = () => app.updateProfile({ photo: String(reader.result) });
             reader.readAsDataURL(file);
@@ -323,7 +297,7 @@ export function AddressesScreen() {
         <Field label="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
         <Field label="State" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} />
         <Field label="Postal code" value={form.postal} onChange={(e) => setForm({ ...form, postal: e.target.value })} />
-        <Button full onClick={() => form.line1 && form.city && app.saveAddress(form)}>Save address</Button>
+        <Button full onClick={() => app.saveAddress(form)}>Save address</Button>
       </div>
     </Screen>
   );
@@ -333,7 +307,6 @@ export function PaymentsScreen() {
   const app = useApp();
   const [label, setLabel] = useState("SAMPLE card");
   const [last4, setLast4] = useState("");
-  const [error, setError] = useState("");
   const rows = app.payments.filter((p) => p.userId === app.user?.id);
   return (
     <Screen>
@@ -342,8 +315,8 @@ export function PaymentsScreen() {
         <p className="text-[13px] text-muted-foreground">Only a nickname and the last 4 digits are kept. Nothing is charged.</p>
         {rows.map((p) => <div key={p.id} className="flex justify-between rounded-xl border border-border p-3"><span>{p.label} · {p.last4}</span><button type="button" className="text-destructive" onClick={() => app.removePayment(p.id)}>Remove</button></div>)}
         <Field label="Nickname" value={label} onChange={(e) => setLabel(e.target.value)} />
-        <Field label="Last 4 digits" value={last4} onChange={(e) => setLast4(e.target.value)} inputMode="numeric" error={error} />
-        <Button full onClick={() => { const result = app.savePayment({ label, last4 }); if (!result.ok && result.reason !== "auth") setError(result.reason); else setError(""); }}>Save method</Button>
+        <Field label="Last 4 digits" value={last4} onChange={(e) => setLast4(e.target.value)} />
+        <Button full onClick={() => { app.savePayment({ label, last4 }); }}>Save method</Button>
       </div>
     </Screen>
   );
@@ -503,11 +476,11 @@ export function ChatThread({ threadId }: { threadId: string }) {
         ))}
         {typing && <p className="text-[12px] text-muted-foreground">Shop is typing…</p>}
       </div>
-      <form className="sticky bottom-0 flex items-end gap-2 border-t border-border bg-background px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" onSubmit={(e) => { e.preventDefault(); if (!text.trim()) return; setTyping(true); app.sendMessage(thread.id, text.trim()); setText(""); setTimeout(() => setTyping(false), 700); }}>
+      <form noValidate className="sticky bottom-0 flex items-end gap-2 border-t border-border bg-background px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" onSubmit={(e) => { e.preventDefault(); setTyping(true); app.sendMessage(thread.id, text.trim()); setText(""); setTimeout(() => setTyping(false), 700); }}>
         <label className="flex h-11 w-11 items-center justify-center rounded-xl border border-border" aria-label="Attach a photo">
           <input type="file" accept="image/*" className="sr-only" onChange={(e) => {
             const file = e.target.files?.[0];
-            if (!file || file.size > 1200000) return;
+            if (!file) return;
             const reader = new FileReader();
             reader.onload = () => app.sendMessage(thread.id, text.trim() || "Photo", String(reader.result));
             reader.readAsDataURL(file);
@@ -551,7 +524,7 @@ export function ContactPage() {
       <p><a className="text-[var(--secondary-ink)]" href={`mailto:${SHOP.email}`}>{SHOP.email}</a></p>
       <p>{SHOP.hours}</p>
       {sent ? <p>Saved on this device. The shop has not received it. Use chat or email for a real note.</p> : (
-        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (note.trim().length > 3) setSent(true); }}>
+        <form noValidate className="space-y-3" onSubmit={(e) => { e.preventDefault(); setSent(true); }}>
           <TextArea label="Note" value={note} onChange={(e) => setNote(e.target.value)} />
           <Button type="submit">Save a note</Button>
         </form>

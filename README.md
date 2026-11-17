@@ -9,6 +9,6 @@ npm run dev
 
 The dev server uses the base path `/on-top-aba/`.
 
-Sample account: `builder@angryanvil.store` / `ShopDemo1`. Sample verification code: `482913`.
+Sign-in, registration, and verification codes accept any input. A saved sample account is `builder@angryanvil.store` / `ShopDemo1`.
 
 See `HANDOFF.md` for client questions and what is still sample data.

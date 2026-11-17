@@ -141,10 +141,6 @@ export function ProductDetail({ productId }: { productId: string }) {
   if (!product) return <Screen><Header title="Product" /><EmptyState title="Not in the catalog" body="That item is not in the sample shop." /></Screen>;
   const variant = product.variants?.map((v) => choice[v.name]).filter(Boolean).join(" / ") ?? "";
   const add = () => {
-    if (product.variants?.some((v) => !choice[v.name])) {
-      setError("Choose each option.");
-      return;
-    }
     setError("");
     app.addToCart(product.id, variant);
   };

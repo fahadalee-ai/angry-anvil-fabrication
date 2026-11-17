@@ -56,7 +56,7 @@ export function GiveawayDetail({ id }: { id: string }) {
         <ol className="list-decimal space-y-1 pl-5 text-[14px] text-muted-foreground">{g.how.map((h) => <li key={h}>{h}</li>)}</ol>
         {entered && <p className="text-[14px] text-success">Already entered. This SAMPLE entry is stored on the device.</p>}
         {!closed && !entered && (
-          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); const result = app.enterGiveaway(g.id, consent, rules); if (!result.ok && result.reason !== "auth") setError(result.reason); if (result.ok) setError(""); }}>
+          <form noValidate className="space-y-3" onSubmit={(e) => { e.preventDefault(); const result = app.enterGiveaway(g.id, true, true); if (!result.ok && result.reason !== "auth") setError(result.reason); if (result.ok) setError(""); }}>
             <label className="flex gap-2 text-[13px]"><input type="checkbox" checked={consent} onChange={(ev) => setConsent(ev.target.checked)} /> I agree to be contacted about this SAMPLE entry.</label>
             <label className="flex gap-2 text-[13px]"><input type="checkbox" checked={rules} onChange={(ev) => setRules(ev.target.checked)} /> I accept the placeholder official rules.</label>
             {error && <p className="text-[13px] text-destructive">{error}</p>}
@@ -177,7 +177,7 @@ export function BibleOffer() {
   return (
     <Screen>
       <Header title="Offer a Bible" />
-      <form className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); if (form.name.trim().length < 2 || form.contact.trim().length < 3) { setError("Name and a way to reach you are required."); return; } const result = app.createOffer(form); if (result.ok) setDone(true); else if (result.reason !== "auth") setError(result.reason); }}>
+      <form noValidate className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); const result = app.createOffer(form); if (result.ok) setDone(true); else if (result.reason !== "auth") setError(result.reason); }}>
         <Field label="Name" value={form.name} onChange={(e) => set("name", e.target.value)} />
         <Field label="Contact" value={form.contact} onChange={(e) => set("contact", e.target.value)} />
         <Field label="Translation" value={form.translation} onChange={(e) => set("translation", e.target.value)} />
@@ -203,7 +203,7 @@ export function BibleRequest() {
   return (
     <Screen>
       <Header title="Request a Bible" />
-      <form className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); if (form.name.trim().length < 2 || form.contact.trim().length < 3 || form.address.trim().length < 4) { setError("Name, contact, and an address are required."); return; } const result = app.createRequest(form); if (result.ok) setDone(true); else if (result.reason !== "auth") setError(result.reason); }}>
+      <form noValidate className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); const result = app.createRequest(form); if (result.ok) setDone(true); else if (result.reason !== "auth") setError(result.reason); }}>
         <Field label="Name" value={form.name} onChange={(e) => set("name", e.target.value)} />
         <Field label="Contact" value={form.contact} onChange={(e) => set("contact", e.target.value)} />
         <Field label="Preferred translation" value={form.translation} onChange={(e) => set("translation", e.target.value)} />

@@ -33,7 +33,6 @@ export function HomeScreen() {
   const load = useScreenLoad("home");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
-  const [emailError, setEmailError] = useState("");
   const [chip, setChip] = useState("All");
   const hour = new Date().getHours();
   const hello = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -262,23 +261,15 @@ export function HomeScreen() {
             <img src={asset(PHOTOS.newsletter)} alt="" className="h-full w-full object-cover" />
           </div>
           <form
+            noValidate
             className="space-y-3 bg-card p-4"
             onSubmit={(e) => {
               e.preventDefault();
-              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                setEmailError("Enter a valid email.");
-                return;
-              }
-              if (!consent) {
-                setEmailError("Confirm you want shop updates.");
-                return;
-              }
-              setEmailError("");
               app.subscribeNewsletter(email);
             }}
           >
             <h2 className="display text-3xl">Stay in the loop.</h2>
-            <Field label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" error={emailError} />
+            <Field label="Email" type="text" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
             <label className="flex items-start gap-2 text-[13px] text-muted-foreground">
               <input type="checkbox" className="mt-1 h-4 w-4" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
               Send me shop updates by email. This SAMPLE form stays on this device.

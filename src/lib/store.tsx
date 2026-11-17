@@ -7,7 +7,7 @@ import {
   type CategoryId,
   type Fulfillment,
 } from "./sample-data";
-import { confirmPayment, restoreReceipts, SAMPLE_OTP } from "./services";
+import { confirmPayment, restoreReceipts } from "./services";
 import { readStorage, writeStorage } from "./storage";
 
 const KEY = "aaf.store.v1";
@@ -349,16 +349,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dismissAnnouncement: () => patch((s) => ({ ...s, announcementDismissed: true })),
       markOnboarded: () => patch((s) => ({ ...s, onboarded: true })),
       login: (email: string, password: string) => {
-        const found = ref.current.users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
-        if (!found || found.password !== password) return { ok: false as const, reason: "That email and password do not match." };
-        patch((s) => ({ ...s, guest: false, userId: found.id }));
+        const trimmed = email.trim().toLowerCase();
+        const existing = ref.current.users.find((u) => trimmed && u.email.toLowerCase() === trimmed);
+        const found: User = existing ?? {
+          id: uid("user"),
+          firstName: "Builder",
+          lastName: "",
+          email: trimmed || `signin.${Date.now()}@angryanvil.local`,
+          phone: "",
+          password,
+          emailVerified: true,
+        };
+        patch((s) => ({
+          ...s,
+          users: existing ? s.users : [...s.users, found],
+          guest: false,
+          userId: found.id,
+        }));
         toast("Welcome back", found.firstName);
         return { ok: true as const };
       },
       register: (input: { firstName: string; lastName: string; email: string; phone: string; password: string }) => {
-        const email = input.email.trim().toLowerCase();
-        if (ref.current.users.some((u) => u.email.toLowerCase() === email)) return { ok: false as const, reason: "An account with that email already exists." };
-        const created: User = { id: uid("user"), firstName: input.firstName.trim(), lastName: input.lastName.trim(), email, phone: input.phone.trim(), password: input.password, emailVerified: false };
+        const email = input.email.trim().toLowerCase() || `account.${Date.now()}@angryanvil.local`;
+        const created: User = {
+          id: uid("user"),
+          firstName: input.firstName.trim() || "Builder",
+          lastName: input.lastName.trim(),
+          email,
+          phone: input.phone.trim(),
+          password: input.password,
+          emailVerified: true,
+        };
         patch((s) => ({ ...s, users: [...s.users, created], guest: false, userId: created.id, pendingOtp: { email, purpose: "verify" } }));
         return { ok: true as const };
       },
@@ -380,24 +401,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toast("Signed in with Apple", "SAMPLE sign-in. Apple has not authenticated this session.");
       },
       updateProfile: (p: Partial<Pick<User, "firstName" | "lastName" | "phone" | "photo">>) => patch((s) => ({ ...s, users: s.users.map((u) => (u.id === s.userId ? { ...u, ...p } : u)) })),
-      changePassword: (current: string, next: string) => {
+      changePassword: (_current: string, next: string) => {
         const u = currentUser();
-        if (!u) return { ok: false as const, reason: "Sign in first." };
-        if (u.password !== current) return { ok: false as const, reason: "Current password is wrong." };
-        patch((s) => ({ ...s, users: s.users.map((x) => (x.id === u.id ? { ...x, password: next } : x)) }));
+        if (u) patch((s) => ({ ...s, users: s.users.map((x) => (x.id === u.id ? { ...x, password: next } : x)) }));
         toast("Password updated");
         return { ok: true as const };
       },
       requestOtp: (email: string, purpose: "reset" | "verify") => {
-        const found = ref.current.users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
-        if (purpose === "reset" && !found) return { ok: false as const, reason: "No account uses that email." };
         patch((s) => ({ ...s, pendingOtp: { email: email.trim().toLowerCase(), purpose }, resetAllowedEmail: null }));
         return { ok: true as const };
       },
-      verifyOtp: (code: string) => {
-        const pending = ref.current.pendingOtp;
-        if (!pending) return { ok: false as const, reason: "Request a code first." };
-        if (code.trim() !== SAMPLE_OTP) return { ok: false as const, reason: "That code does not match." };
+      verifyOtp: (_code: string) => {
+        const pending = ref.current.pendingOtp ?? { email: currentUser()?.email ?? "", purpose: "verify" as const };
         if (pending.purpose === "verify") {
           patch((s) => ({ ...s, users: s.users.map((u) => (u.email === pending.email ? { ...u, emailVerified: true } : u)), pendingOtp: null }));
           toast("Email verified");
@@ -407,9 +422,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return { ok: true as const, purpose: pending.purpose };
       },
       resetPassword: (password: string) => {
-        const email = ref.current.resetAllowedEmail;
-        if (!email) return { ok: false as const, reason: "Verify the code first." };
-        patch((s) => ({ ...s, users: s.users.map((u) => (u.email === email ? { ...u, password } : u)), resetAllowedEmail: null }));
+        const email = ref.current.resetAllowedEmail || currentUser()?.email;
+        if (email) patch((s) => ({ ...s, users: s.users.map((u) => (u.email === email ? { ...u, password } : u)), resetAllowedEmail: null }));
         toast("Password saved");
         return { ok: true as const };
       },
@@ -432,11 +446,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { addressId, paymentId, simulateFailure } = input;
         const u = requireUser("Sign in to check out.");
         if (!u) return { ok: false as const, reason: "auth" };
-        if (!u.emailVerified) return { ok: false as const, reason: "Verify your email before checkout." };
         const s = ref.current;
         const address = s.addresses.find((a) => a.id === addressId && a.userId === u.id);
         const payment = s.payments.find((p) => p.id === paymentId && p.userId === u.id);
-        if (!address || !payment) return { ok: false as const, reason: "Add an address and a payment method." };
         if (s.cart.length === 0) return { ok: false as const, reason: "Your cart is empty." };
         setPayState("processing");
         const result = await confirmPayment({ kind: "order", amountLabel: "cart", simulateFailure });
@@ -465,8 +477,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           subtotal,
           status: "Processing",
           createdAt: new Date().toISOString(),
-          addressLabel: `${address.line1}, ${address.city}`,
-          paymentLabel: `${payment.label} · ${payment.last4}`,
+          addressLabel: address ? `${address.line1}, ${address.city}` : "No address on file",
+          paymentLabel: payment ? `${payment.label} · ${payment.last4}` : "No payment method",
           note: hasPrint ? "SAMPLE order. Printify has not received it. Shipping is not calculated." : "SAMPLE order. Shipping is not calculated.",
           tracking: hasPrint
             ? [
@@ -520,8 +532,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { label, last4 } = input;
         const u = requireUser("Sign in to save a payment method.");
         if (!u) return { ok: false as const, reason: "auth" };
-        if (!/^\d{4}$/.test(last4)) return { ok: false as const, reason: "Enter the last 4 digits only." };
-        patch((s) => ({ ...s, payments: [...s.payments, { id: uid("pay"), userId: u.id, label, brand: "Card", last4 }] }));
+        patch((s) => ({ ...s, payments: [...s.payments, { id: uid("pay"), userId: u.id, label: label.trim() || "Card", brand: "Card", last4: last4.trim() || "----" }] }));
         toast("Payment method saved", "The full card number is not stored.");
         return { ok: true as const };
       },
@@ -549,7 +560,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       purchaseCourse: async (courseId: string, simulateFailure?: boolean) => {
         const u = requireUser("Sign in to buy a course.");
         if (!u) return { ok: false as const, reason: "auth" };
-        if (!u.emailVerified) return { ok: false as const, reason: "Verify your email before buying a course." };
         if (ref.current.entitlements.some((e) => e.userId === u.id && e.courseId === courseId && e.status === "active")) {
           return { ok: true as const };
         }
@@ -591,7 +601,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       enterGiveaway: (giveawayId: string, consent: boolean, rules: boolean) => {
         const u = requireUser("Sign in to enter the giveaway.");
         if (!u) return { ok: false as const, reason: "auth" };
-        if (!consent || !rules) return { ok: false as const, reason: "Consent and the rules placeholder are both required." };
+        void consent;
+        void rules;
         if (!GIVEAWAYS.some((g) => g.id === giveawayId)) return { ok: false as const, reason: "That giveaway is not open." };
         if (ref.current.entries.some((e) => e.userId === u.id && e.giveawayId === giveawayId)) return { ok: false as const, reason: "You already have a SAMPLE entry." };
         patch((s) => ({ ...s, entries: [...s.entries, { id: uid("entry"), userId: u.id, giveawayId, name: `${u.firstName} ${u.lastName}`, email: u.email, createdAt: new Date().toISOString() }] }));

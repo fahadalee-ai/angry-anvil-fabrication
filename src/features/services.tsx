@@ -83,18 +83,9 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
 function useInquiryForm(kind: Booking["kind"]) {
   const app = useApp();
   const [form, setForm] = useState({ name: app.user ? `${app.user.firstName} ${app.user.lastName}` : "", email: app.user?.email ?? "", projectType: PROJECT_TYPES[0], budget: BUDGETS[4], timeline: TIMELINES[3], notes: "", date: "", time: TIME_SLOTS[0], attachmentName: "" });
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const set = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
   const submit = (serviceId: string) => {
-    const next: Record<string, string> = {};
-    if (form.name.trim().length < 2) next.name = "Enter your name.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = "Enter a valid email.";
-    if (!form.projectType) next.projectType = "Choose a project type.";
-    if (form.notes.trim().length < 8) next.notes = "Tell us about the idea.";
-    if (kind === "consultation" && !form.date) next.date = "Pick a date.";
-    setErrors(next);
-    if (Object.keys(next).length) return null;
     setBusy(true);
     const result = app.createBooking({
       serviceId,
@@ -112,7 +103,7 @@ function useInquiryForm(kind: Booking["kind"]) {
     setBusy(false);
     return result;
   };
-  return { form, set, errors, busy, submit };
+  return { form, set, busy, submit };
 }
 
 export function InquireScreen({ serviceId }: { serviceId?: string }) {
@@ -122,11 +113,11 @@ export function InquireScreen({ serviceId }: { serviceId?: string }) {
   return (
     <Screen>
       <Header title="Project inquiry" subtitle={service?.title ?? "Custom work"} />
-      <form className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); const result = form.submit(service?.id ?? "custom-metal"); if (result && result.ok) nav({ to: "/services/bookings/$bookingId" as never, params: { bookingId: result.id } as never }); }}>
+      <form noValidate className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); const result = form.submit(service?.id ?? "custom-metal"); if (result && result.ok) nav({ to: "/services/bookings/$bookingId" as never, params: { bookingId: result.id } as never }); }}>
         <p className="text-[13px] text-muted-foreground">No fixed price. Scope, pricing and timing are confirmed together.</p>
-        <Field label="Name" value={form.form.name} onChange={(e) => form.set("name", e.target.value)} error={form.errors.name} />
-        <Field label="Email" type="email" value={form.form.email} onChange={(e) => form.set("email", e.target.value)} error={form.errors.email} />
-        <SelectField label="Project type" value={form.form.projectType} onChange={(e) => form.set("projectType", e.target.value)} error={form.errors.projectType}>
+        <Field label="Name" value={form.form.name} onChange={(e) => form.set("name", e.target.value)} />
+        <Field label="Email" type="text" value={form.form.email} onChange={(e) => form.set("email", e.target.value)} />
+        <SelectField label="Project type" value={form.form.projectType} onChange={(e) => form.set("projectType", e.target.value)}>
           {PROJECT_TYPES.map((t) => <option key={t}>{t}</option>)}
         </SelectField>
         <SelectField label="Approximate budget" value={form.form.budget} onChange={(e) => form.set("budget", e.target.value)}>
@@ -135,7 +126,7 @@ export function InquireScreen({ serviceId }: { serviceId?: string }) {
         <SelectField label="Ideal timeline" value={form.form.timeline} onChange={(e) => form.set("timeline", e.target.value)}>
           {TIMELINES.map((t) => <option key={t}>{t}</option>)}
         </SelectField>
-        <TextArea label="Tell us about your idea" value={form.form.notes} onChange={(e) => form.set("notes", e.target.value)} error={form.errors.notes} />
+        <TextArea label="Tell us about your idea" value={form.form.notes} onChange={(e) => form.set("notes", e.target.value)} />
         <label className="block text-[13px] font-medium">Reference photo or sketch
           <input type="file" accept="image/*,.pdf" className="mt-1 block w-full text-[13px]" onChange={(e) => form.set("attachmentName", e.target.files?.[0]?.name ?? "")} />
         </label>
@@ -158,19 +149,19 @@ export function BookScreen() {
   return (
     <Screen>
       <Header title="Book a consultation" />
-      <form className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); const result = form.submit(serviceId); if (result && result.ok) nav({ to: "/services/bookings/$bookingId" as never, params: { bookingId: result.id } as never, search: { confirmed: "1" } as never }); }}>
+      <form noValidate className="space-y-3 px-4 py-4" onSubmit={(e) => { e.preventDefault(); const result = form.submit(serviceId); if (result && result.ok) nav({ to: "/services/bookings/$bookingId" as never, params: { bookingId: result.id } as never, search: { confirmed: "1" } as never }); }}>
         <SelectField label="Service" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
           {SERVICES.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
         </SelectField>
-        <Field label="Name" value={form.form.name} onChange={(e) => form.set("name", e.target.value)} error={form.errors.name} />
-        <Field label="Email" type="email" value={form.form.email} onChange={(e) => form.set("email", e.target.value)} error={form.errors.email} />
-        <Field label="Date" type="date" value={form.form.date} onChange={(e) => form.set("date", e.target.value)} error={form.errors.date} />
+        <Field label="Name" value={form.form.name} onChange={(e) => form.set("name", e.target.value)} />
+        <Field label="Email" type="text" value={form.form.email} onChange={(e) => form.set("email", e.target.value)} />
+        <Field label="Date" type="text" value={form.form.date} onChange={(e) => form.set("date", e.target.value)} placeholder="Any date" />
         <p className="text-[13px] font-medium">Time</p>
         <div className="flex flex-wrap gap-2">{TIME_SLOTS.map((slot) => <Chip key={slot} active={form.form.time === slot} onClick={() => form.set("time", slot)}>{slot}</Chip>)}</div>
         <SelectField label="Project type" value={form.form.projectType} onChange={(e) => form.set("projectType", e.target.value)}>
           {PROJECT_TYPES.map((t) => <option key={t}>{t}</option>)}
         </SelectField>
-        <TextArea label="Notes" value={form.form.notes} onChange={(e) => form.set("notes", e.target.value)} error={form.errors.notes} />
+        <TextArea label="Notes" value={form.form.notes} onChange={(e) => form.set("notes", e.target.value)} />
         <p className="text-[13px] text-muted-foreground">Scope, pricing and timing are confirmed together. The slot is a request until the shop accepts it.</p>
         <Button type="submit" full>Request this time</Button>
       </form>
@@ -232,9 +223,9 @@ export function BookingDetail({ bookingId, confirmed }: { bookingId: string; con
         {!locked && booking.kind === "consultation" && (
           <div className="space-y-2 rounded-2xl border border-border p-3">
             <p className="font-semibold">Reschedule</p>
-            <Field label="New date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Field label="New date" type="text" value={date} onChange={(e) => setDate(e.target.value)} placeholder="Any date" />
             <div className="flex flex-wrap gap-2">{TIME_SLOTS.map((slot) => <Chip key={slot} active={time === slot} onClick={() => setTime(slot)}>{slot}</Chip>)}</div>
-            <Button onClick={() => date && app.rescheduleBooking(booking.id, date, time)} disabled={!date}>Update time</Button>
+            <Button onClick={() => app.rescheduleBooking(booking.id, date, time)}>Update time</Button>
           </div>
         )}
         {!locked && <Button variant="ghost" onClick={() => app.cancelBooking(booking.id)}>Cancel</Button>}

@@ -2,7 +2,7 @@
 
 The app is a phone-framed TanStack Start interface on the existing web stack. It was not migrated to React Native. Open it at the project base path `/on-top-aba/` (kept so the current preview host still matches).
 
-Sample sign-in: `builder@angryanvil.store` / `ShopDemo1`. Sample verification code: `482913`. Sign in with Apple creates a labeled sample session and does not call Apple. Guest browsing covers the shop and course catalog. Checkout, course purchase, chat, giveaways, Bible offers/requests, and bookings ask for an account.
+Sign-in, registration, password changes, and verification codes accept any input. A saved sample account is still `builder@angryanvil.store` / `ShopDemo1`. Sign in with Apple creates a labeled sample session and does not call Apple. Guest browsing covers the shop and course catalog. Checkout, course purchase, chat, giveaways, Bible offers/requests, and bookings ask for an account.
 
 ## Open questions for the client
 
