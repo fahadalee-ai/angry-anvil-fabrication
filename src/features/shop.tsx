@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Heart, SlidersHorizontal } from "lucide-react";
+import { Heart, ShoppingBag, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
-import { CATEGORIES, SAFETY_NOTE, getCatalog, getProduct, money, type CategoryId, type Product } from "@/lib/sample-data";
+import { CATEGORIES, SAFETY_NOTE, getCatalog, getProduct, money, type CategoryId, type PhotoKey, type Product } from "@/lib/sample-data";
 import { PRINTIFY_NOTICE } from "@/lib/services";
 import { useApp } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { Badge, Button, Chip, EmptyState, ErrorBlock, Field, Header, LoadBlock, Photo, Price, SampleMark, Screen, SelectField, Sheet, TextArea, useScreenLoad } from "@/components/ui-kit";
 
 export type ShopSearch = { cat: "all" | CategoryId };
@@ -37,13 +38,25 @@ export function ShopHome({ search }: { search: ShopSearch }) {
     return list;
   }, [search.cat, q, sort, avail, badge]);
 
+  const app = useApp();
+  const nav = useNavigate();
+  const cartCount = app.cart.reduce((n, l) => n + l.qty, 0);
+  const subtotal = app.cart.reduce((n, l) => n + (getProduct(l.productId)?.price ?? 0) * l.qty, 0);
   if (load.loading) return <Screen><Header title="Shop" back={false} /><LoadBlock /></Screen>;
   if (load.error) return <Screen><Header title="Shop" back={false} /><ErrorBlock onRetry={load.retry} /></Screen>;
 
   return (
     <Screen>
-      <Header title="Shop" subtitle="Kits, cuts, apparel" back={false} right={<button type="button" aria-label="Filters" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border" onClick={() => setFilters(true)}><SlidersHorizontal size={18} /></button>} />
-      <div className="space-y-4 px-4 py-4">
+      <Header title="Shop" subtitle="Kits, cuts, apparel" back={false} right={
+        <div className="flex gap-2">
+          <Link to={"/shop/cart" as never} aria-label={cartCount ? `Cart, ${cartCount} items` : "Cart"} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-border">
+            <ShoppingBag size={18} />
+            {cartCount > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] text-white">{cartCount}</span>}
+          </Link>
+          <button type="button" aria-label="Filters" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border" onClick={() => setFilters(true)}><SlidersHorizontal size={18} /></button>
+        </div>
+      } />
+      <div className={cn("space-y-4 px-4 py-4", cartCount > 0 && "pb-28")}>
         <Field label="Search the shop" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Kits, panels, hoodies" />
         <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
           <CatLink id="all" label="All" active={search.cat === "all"} />
@@ -60,12 +73,13 @@ export function ShopHome({ search }: { search: ShopSearch }) {
         {products.length === 0 ? (
           <EmptyState title="Nothing in this cut" body="Try another category or clear the filters." />
         ) : (
-          <div className={view === "grid" ? "grid grid-cols-2 gap-3" : "space-y-3"}>
+          <div className={view === "grid" ? "grid grid-cols-2 items-stretch gap-3" : "space-y-3"}>
             {products.map((p) => <ProductCard key={p.id} product={p} wide={view === "list"} />)}
           </div>
         )}
         <p className="text-[13px] text-muted-foreground">{SAFETY_NOTE}</p>
       </div>
+      {cartCount > 0 && <CheckoutBar count={cartCount} subtotal={subtotal} onCheckout={() => (app.authed ? nav({ to: "/shop/checkout" as never }) : app.openAuth("Sign in to check out."))} />}
       <Sheet open={filters} title="Filter and sort" onClose={() => setFilters(false)}>
         <div className="space-y-3">
           <SelectField label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -91,6 +105,20 @@ export function ShopHome({ search }: { search: ShopSearch }) {
   );
 }
 
+function CheckoutBar({ count, subtotal, onCheckout }: { count: number; subtotal: number; onCheckout: () => void }) {
+  return (
+    <div className="fixed bottom-[calc(4.55rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 px-3">
+      <div className="flex items-center gap-3 rounded-2xl border border-primary/40 bg-card px-3 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.45)]">
+        <Link to={"/shop/cart" as never} className="min-w-0 flex-1">
+          <p className="text-[12px] text-muted-foreground">{count} in cart · View cart</p>
+          <p className="display text-2xl leading-none text-primary">{money(subtotal)}</p>
+        </Link>
+        <Button onClick={onCheckout}>Checkout</Button>
+      </div>
+    </div>
+  );
+}
+
 function CatLink({ id, label, active }: { id: string; label: string; active: boolean }) {
   return (
     <Link to={"/shop" as never} search={{ cat: id === "all" ? undefined : id } as never} className={`display h-9 shrink-0 rounded-full border px-3 text-[13px] leading-9 ${active ? "border-primary bg-primary text-white" : "border-border"}`}>
@@ -99,32 +127,64 @@ function CatLink({ id, label, active }: { id: string; label: string; active: boo
   );
 }
 
+function Shot({ name, alt, className }: { name: PhotoKey; alt: string; className?: string }) {
+  return (
+    <div className={cn("relative overflow-hidden bg-[#101418]", className)}>
+      <Photo name={name} alt={alt} className="absolute inset-0 h-full w-full object-cover" />
+    </div>
+  );
+}
+
 function ProductCard({ product, wide }: { product: Product; wide?: boolean }) {
   const app = useApp();
-  return (
-    <article className={`rounded-2xl border border-border bg-card p-2 ${wide ? "flex gap-3" : ""}`}>
-      <Link to={"/shop/product/$productId" as never} params={{ productId: product.id } as never} className={wide ? "w-28 shrink-0" : ""}>
-        <Photo name={product.photos[0]} alt={product.name} className={wide ? "h-28 rounded-xl" : "aspect-square rounded-xl"} />
-      </Link>
-      <div className="min-w-0 flex-1 p-1">
-        <div className="flex flex-wrap gap-1">
-          {product.badge === "beginner" && <Badge tone="red">Best for beginners</Badge>}
-          {product.badge === "staff" && <Badge tone="teal">Staff pick</Badge>}
-          <Badge>{product.stock === "in_stock" ? "In stock" : "Made to order"}</Badge>
-          <SampleMark />
-        </div>
-        <Link to={"/shop/product/$productId" as never} params={{ productId: product.id } as never}>
-          <h3 className="mt-1 font-semibold leading-tight">{product.name}</h3>
-          <p className="mt-1 line-clamp-2 text-[12px] text-muted-foreground">{product.summary}</p>
+  const stock = product.stock === "in_stock" ? "In stock" : "Made to order";
+  const flag = product.badge === "beginner" ? "Beginner" : product.badge === "staff" ? "Staff pick" : null;
+  const action =
+    product.fulfillment === "quote" ? (
+      <Link to={"/services/inquire" as never} className="display flex h-10 w-full items-center justify-center rounded-xl bg-primary text-[12px] text-white">Inquire</Link>
+    ) : product.variants ? (
+      <Link to={"/shop/product/$productId" as never} params={{ productId: product.id } as never} className="display flex h-10 w-full items-center justify-center rounded-xl border border-[var(--secondary-ink)] text-[12px] text-[var(--secondary-ink)]">Details</Link>
+    ) : (
+      <Button className="h-10 text-[12px]" full onClick={() => app.addToCart(product.id, "")}>Add to cart</Button>
+    );
+  const price = <p className="display text-[1.35rem] leading-none text-primary">{product.price == null ? "By quote" : money(product.price)}</p>;
+
+  if (wide) {
+    return (
+      <article className="flex gap-3 rounded-2xl border border-border bg-card p-2">
+        <Link to={"/shop/product/$productId" as never} params={{ productId: product.id } as never} className="shrink-0">
+          <Shot name={product.photos[0]} alt={product.name} className="h-28 w-28 rounded-xl" />
         </Link>
-        <div className="mt-2"><Price value={product.price} /></div>
-        {product.fulfillment === "quote" ? (
-          <Link to={"/services/inquire" as never} className="display mt-2 flex h-11 items-center justify-center rounded-xl bg-primary text-[15px] text-white">Start inquiry</Link>
-        ) : product.variants ? (
-          <Link to={"/shop/product/$productId" as never} params={{ productId: product.id } as never} className="display mt-2 flex h-11 items-center justify-center rounded-xl border border-[var(--secondary-ink)] text-[13px] text-[var(--secondary-ink)]">View Details</Link>
-        ) : (
-          <Button className="mt-2" full onClick={() => app.addToCart(product.id, "")}>Add to Cart</Button>
-        )}
+        <div className="flex min-w-0 flex-1 flex-col py-1 pr-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{flag ? `${flag} · ${stock}` : stock}</p>
+          <Link to={"/shop/product/$productId" as never} params={{ productId: product.id } as never}>
+            <h3 className="mt-1 line-clamp-2 font-semibold leading-tight">{product.name}</h3>
+            <p className="mt-1 line-clamp-2 text-[12px] text-muted-foreground">{product.summary}</p>
+          </Link>
+          <div className="mt-auto flex items-end justify-between gap-3 pt-3">
+            {price}
+            <div className="w-28 shrink-0">{action}</div>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
+  return (
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card">
+      <Link to={"/shop/product/$productId" as never} params={{ productId: product.id } as never} className="relative block">
+        <Shot name={product.photos[0]} alt={product.name} className="aspect-[4/5] w-full" />
+        <div className="pointer-events-none absolute inset-x-2 bottom-2 flex flex-wrap gap-1">
+          {flag && <span className="display rounded-md bg-primary px-1.5 py-1 text-[10px] text-white">{flag}</span>}
+          <span className="display rounded-md bg-black/75 px-1.5 py-1 text-[10px] text-white">{stock}</span>
+        </div>
+      </Link>
+      <div className="flex flex-1 flex-col p-3">
+        <Link to={"/shop/product/$productId" as never} params={{ productId: product.id } as never}>
+          <h3 className="line-clamp-2 min-h-10 text-[14px] font-semibold leading-snug">{product.name}</h3>
+        </Link>
+        <div className="mt-2">{price}</div>
+        <div className="mt-auto pt-3">{action}</div>
       </div>
     </article>
   );
@@ -133,11 +193,14 @@ function ProductCard({ product, wide }: { product: Product; wide?: boolean }) {
 export function ProductDetail({ productId }: { productId: string }) {
   const product = getProduct(productId);
   const app = useApp();
+  const nav = useNavigate();
   const [photo, setPhoto] = useState(0);
   const [zoom, setZoom] = useState(false);
   const [choice, setChoice] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const related = getCatalog().filter((p) => p.category === product?.category && p.id !== product?.id).slice(0, 3);
+  const cartCount = app.cart.reduce((n, l) => n + l.qty, 0);
+  const subtotal = app.cart.reduce((n, l) => n + (getProduct(l.productId)?.price ?? 0) * l.qty, 0);
   if (!product) return <Screen><Header title="Product" /><EmptyState title="Not in the catalog" body="That item is not in the sample shop." /></Screen>;
   const variant = product.variants?.map((v) => choice[v.name]).filter(Boolean).join(" / ") ?? "";
   const add = () => {
@@ -147,14 +210,14 @@ export function ProductDetail({ productId }: { productId: string }) {
   return (
     <Screen>
       <Header title={product.name} right={<button type="button" aria-label="Wishlist" className="flex h-11 w-11 items-center justify-center rounded-xl border border-border" onClick={() => app.toggleWishlist(product.id)}><Heart size={18} fill={app.wishlist.includes(product.id) ? "currentColor" : "none"} /></button>} />
-      <div className="space-y-4 px-4 py-4">
+      <div className={cn("space-y-4 px-4 py-4", cartCount > 0 && "pb-28")}>
         <button type="button" className="block w-full overflow-hidden rounded-2xl" onClick={() => setZoom(true)} aria-label="Open image">
-          <Photo name={product.photos[photo] ?? product.photos[0]} alt={product.name} className="aspect-square" />
+          <Shot name={product.photos[photo] ?? product.photos[0]} alt={product.name} className="aspect-square w-full" />
         </button>
         <div className="flex gap-2">
           {product.photos.map((p, i) => (
-            <button key={p + i} type="button" aria-label={`Image ${i + 1}`} onClick={() => setPhoto(i)} className={`h-16 w-16 overflow-hidden rounded-lg border ${i === photo ? "border-primary" : "border-border"}`}>
-              <Photo name={p} alt="" className="h-full" />
+            <button key={p + i} type="button" aria-label={`Image ${i + 1}`} onClick={() => setPhoto(i)} className={`overflow-hidden rounded-lg border ${i === photo ? "border-primary" : "border-border"}`}>
+              <Shot name={p} alt="" className="h-16 w-16" />
             </button>
           ))}
         </div>
@@ -193,12 +256,13 @@ export function ProductDetail({ productId }: { productId: string }) {
           </div>
         )}
       </div>
+      {cartCount > 0 && <CheckoutBar count={cartCount} subtotal={subtotal} onCheckout={() => (app.authed ? nav({ to: "/shop/checkout" as never }) : app.openAuth("Sign in to check out."))} />}
       {zoom && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black">
           <button type="button" className="m-4 h-11 self-end px-3 text-white" onClick={() => setZoom(false)}>Close</button>
           <div className="flex flex-1 items-center overflow-auto">
             <img src="" alt="" className="hidden" />
-            <Photo name={product.photos[photo] ?? product.photos[0]} alt={product.name} className="max-h-[80dvh]" />
+            <Shot name={product.photos[photo] ?? product.photos[0]} alt={product.name} className="mx-auto h-[70dvh] w-full" />
           </div>
           <label className="p-4 text-[13px] text-white">Zoom is the fullscreen view. Pinch is left to the system photo viewer when a signed asset exists.</label>
         </div>
@@ -221,7 +285,7 @@ export function CartScreen() {
         <div className="space-y-4 px-4 py-4">
           {lines.map((l) => (
             <div key={l.id} className="flex gap-3 rounded-2xl border border-border bg-card p-2">
-              <Photo name={l.product!.photos[0]} alt="" className="h-20 w-20 rounded-xl" />
+              <Shot name={l.product!.photos[0]} alt="" className="h-20 w-20 shrink-0 rounded-xl" />
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{l.product!.name}</p>
                 {l.variant && <p className="text-[12px] text-muted-foreground">{l.variant}</p>}
@@ -291,7 +355,17 @@ export function CheckoutScreen() {
       <Header title="Checkout" />
       <div className="space-y-4 px-4 py-4">
         <p className="text-[13px] leading-relaxed text-muted-foreground">Payment provider is not configured. This confirms a SAMPLE order only.</p>
-        {lines.map((l) => <p key={l.id} className="text-[14px]">{l.qty} × {l.product!.name} {l.variant && `· ${l.variant}`}</p>)}
+        <div className="space-y-2">
+          {lines.map((l) => (
+            <div key={l.id} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-2">
+              <Shot name={l.product!.photos[0]} alt="" className="h-14 w-14 shrink-0 rounded-lg" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-semibold">{l.product!.name}</p>
+                <p className="text-[12px] text-muted-foreground">{l.qty} × {l.product!.price == null ? "By quote" : money(l.product!.price)}{l.variant ? ` · ${l.variant}` : ""}</p>
+              </div>
+            </div>
+          ))}
+        </div>
         <p className="display text-3xl text-primary">{money(subtotal)}</p>
         <SelectField label="Delivery address" value={addressId} onChange={(e) => setAddressId(e.target.value)}>
           {addresses.length === 0 && <option value="">No address yet</option>}
@@ -336,9 +410,12 @@ export function OrdersScreen() {
         <ul className="space-y-2 px-4 py-4">
           {orders.map((o) => (
             <li key={o.id}>
-              <Link to={"/shop/orders/$orderId" as never} params={{ orderId: o.id } as never} className="block rounded-2xl border border-border bg-card p-3">
-                <div className="flex items-center justify-between"><span className="font-semibold">{o.lines[0]?.name}</span><Badge>{o.status}</Badge></div>
-                <p className="text-[12px] text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()} · {money(o.subtotal)}</p>
+              <Link to={"/shop/orders/$orderId" as never} params={{ orderId: o.id } as never} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-2">
+                {getProduct(o.lines[0]?.productId)?.photos[0] && <Shot name={getProduct(o.lines[0].productId)!.photos[0]} alt="" className="h-16 w-16 shrink-0 rounded-xl" />}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2"><span className="truncate font-semibold">{o.lines[0]?.name}</span><Badge>{o.status}</Badge></div>
+                  <p className="text-[12px] text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()} · {money(o.subtotal)}</p>
+                </div>
               </Link>
             </li>
           ))}
@@ -361,7 +438,15 @@ export function OrderDetail({ orderId }: { orderId: string }) {
       <Header title="Order" subtitle={order.status} />
       <div className="space-y-4 px-4 py-4">
         <SampleMark />
-        {order.lines.map((l) => <p key={l.productId + l.variant}>{l.qty} × {l.name} {l.variant && `· ${l.variant}`} — {money(l.unitPrice)}</p>)}
+        {order.lines.map((l) => (
+          <div key={l.productId + l.variant} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-2">
+            {getProduct(l.productId)?.photos[0] && <Shot name={getProduct(l.productId)!.photos[0]} alt="" className="h-14 w-14 shrink-0 rounded-lg" />}
+            <div className="min-w-0">
+              <p className="font-semibold">{l.name}</p>
+              <p className="text-[12px] text-muted-foreground">{l.qty} × {money(l.unitPrice)}{l.variant ? ` · ${l.variant}` : ""}</p>
+            </div>
+          </div>
+        ))}
         <p className="display text-3xl text-primary">{money(order.subtotal)}</p>
         <p className="text-[13px] text-muted-foreground">{order.note}</p>
         <p className="text-[13px]">Ship to {order.addressLabel}</p>

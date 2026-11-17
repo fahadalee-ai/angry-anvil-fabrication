@@ -45,18 +45,19 @@ export function OnboardingScreen() {
   );
 }
 
-function AuthFrame({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function AuthFrame({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: React.ReactNode; footer?: React.ReactNode }) {
   return (
     <Screen>
       <div className="relative min-h-dvh">
         <img src={asset(PHOTOS.auth)} alt="" className="absolute inset-0 h-48 w-full object-cover opacity-70" />
         <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-transparent to-background" />
-        <div className="relative px-5 pb-8 pt-[max(7rem,env(safe-area-inset-top))]">
+        <div className={`relative px-5 pt-[max(6.5rem,env(safe-area-inset-top))] ${footer ? "pb-52" : "pb-8"}`}>
           <img src={logo} alt="Angry Anvil Fabrication" className="mb-4 h-16 object-contain" />
           <h1 className="display text-4xl">{title}</h1>
           {subtitle && <p className="mt-2 text-[14px] text-muted-foreground">{subtitle}</p>}
           <div className="mt-5">{children}</div>
         </div>
+        {footer}
       </div>
     </Screen>
   );
@@ -70,7 +71,22 @@ export function LoginScreen() {
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   return (
-    <AuthFrame title="Sign in" subtitle="Any email and password will sign you in.">
+    <AuthFrame
+      title="Sign in"
+      subtitle="Any email and password will sign you in."
+      footer={
+        <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-background/95 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+          <p className="text-center text-[13px] text-muted-foreground">New here?</p>
+          <Link to={"/register" as never} className="display mt-2 flex h-12 w-full items-center justify-center rounded-xl bg-card text-[15px] text-[var(--secondary-ink)] ring-1 ring-[var(--secondary-ink)]">
+            Create an account
+          </Link>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Link to={"/terms" as never} className="flex h-11 items-center justify-center rounded-xl border border-border text-[14px] font-semibold text-[var(--secondary-ink)]">Terms</Link>
+            <Link to={"/privacy" as never} className="flex h-11 items-center justify-center rounded-xl border border-border text-[14px] font-semibold text-[var(--secondary-ink)]">Privacy</Link>
+          </div>
+        </div>
+      }
+    >
       <form noValidate className="space-y-3" onSubmit={(e) => { e.preventDefault(); setBusy(true); app.login(email, password); setBusy(false); nav({ to: "/" as never }); }}>
         <Field label="Email" type="text" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <div className="relative">
@@ -82,8 +98,6 @@ export function LoginScreen() {
         <Button full variant="secondary" onClick={() => { app.signInWithApple(); nav({ to: "/" as never }); }}>Sign in with Apple</Button>
         <p className="text-[12px] text-muted-foreground">Apple sign-in is a SAMPLE session. Apple has not verified it. No other social login is offered.</p>
         <Button full variant="ghost" onClick={() => { app.continueAsGuest(); nav({ to: "/" as never }); }}>Continue as Guest</Button>
-        <p className="text-[14px]">New here? <Link to={"/register" as never} className="text-[var(--secondary-ink)]">Create an account</Link></p>
-        <p className="text-[12px] text-muted-foreground"><Link to={"/terms" as never}>Terms</Link> · <Link to={"/privacy" as never}>Privacy</Link></p>
       </form>
     </AuthFrame>
   );
