@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { GraduationCap, House, MessageCircle, ShoppingBag, Wrench } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import logo from "@/img/logo.png";
 import { isUnread, useApp, visibleNotifications } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -18,10 +18,18 @@ const HIDE = /^\/(onboarding|login|register|forgot-password|reset-password|otp|v
 
 export function AppShell({ children }: { children: ReactNode }) {
   const app = useApp();
+  const nav = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [splashDone, setSplashDone] = useState(false);
   const [online, setOnline] = useState(true);
+  const opened = useRef(false);
   const showTabs = splashDone && !HIDE.test(path) && !path.includes("/lessons/");
+
+  useEffect(() => {
+    if (!app.hydrated || opened.current) return;
+    opened.current = true;
+    if (path !== "/onboarding") nav({ to: "/onboarding" as never, replace: true });
+  }, [app.hydrated, nav, path]);
 
   useEffect(() => {
     const sync = () => setOnline(navigator.onLine);
@@ -58,16 +66,11 @@ function Splash({ hold, onDone }: { hold: boolean; onDone: () => void }) {
   const [minMet, setMinMet] = useState(false);
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const seen = sessionStorage.getItem("aaf.splash") === "1";
-    const ms = seen ? 0 : reduce ? 400 : 1600;
-    const t = setTimeout(() => setMinMet(true), ms);
+    const t = setTimeout(() => setMinMet(true), reduce ? 400 : 1600);
     return () => clearTimeout(t);
   }, []);
   useEffect(() => {
-    if (minMet && !hold) {
-      sessionStorage.setItem("aaf.splash", "1");
-      onDone();
-    }
+    if (minMet && !hold) onDone();
   }, [minMet, hold, onDone]);
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background">

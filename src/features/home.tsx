@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Bell, BookOpen, Flame, Gift, GraduationCap, Images, Search, Shirt, ShoppingCart, Wrench } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import logo from "@/img/logo.png";
 import {
   CATEGORIES,
@@ -49,10 +49,6 @@ export function HomeScreen() {
     { photo: "interior" as const, alt: "Workshop interior before the first arc" },
   ];
   const filtered = GALLERY.filter((g) => chip === "All" || (chip === "Fabrication Projects" && g.category === "fabrication") || (chip === "Laser-Cut Designs" && g.category === "laser") || (chip === "Past Giveaways & Winners" && g.category === "winners"));
-
-  useEffect(() => {
-    if (app.hydrated && !app.onboarded) nav({ to: "/onboarding" as never });
-  }, [app.hydrated, app.onboarded, nav]);
 
   if (load.loading) {
     return (
