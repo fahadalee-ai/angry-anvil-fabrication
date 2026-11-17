@@ -301,4 +301,5 @@ function IconLink({ to, label, children }: { to: string; label: string; children
 }
 
 export function Missing({ title }: { title: string }) {
-  return <Screen><EmptyState title={title} body="That page is not in the sample catalog." action={<Link to="/"
+  return <Screen><EmptyState title={title} body="That page is not in the sample catalog." action={<Link to="/" className="text-[var(--secondary-ink)]">Back home</Link>} /></Screen>;
+}

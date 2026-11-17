@@ -1,16 +1,14 @@
-# Mobile App Starter
+# Angry Anvil Fabrication
 
-Clean React mobile-app starter. Duplicate this project when you begin a new app.
-
-## Development
-
-You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Phone-framed shop app for kits, custom fabrication, courses, and the community around the shop. Dark theme is the default. A light theme is in Profile.
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
 npm i
 npm run dev
 ```
 
-This project was built with [Lovable](https://lovable.dev).
+The dev server uses the base path `/on-top-aba/`.
+
+Sample account: `builder@angryanvil.store` / `ShopDemo1`. Sample verification code: `482913`.
+
+See `HANDOFF.md` for client questions and what is still sample data.
